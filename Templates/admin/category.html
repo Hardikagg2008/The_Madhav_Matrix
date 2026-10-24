@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ meta.label }} Queue | Municipal Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .issue-card { transition: transform .2s, box-shadow .2s; }
+    .issue-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.08); }
+    .pulse-badge { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+    .btn-resolve:hover { background-color: #059669; color: white; }
+    .btn-reopen:hover { background-color: #d97706; color: white; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- LIGHTBOX -->
+  <div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+    <img id="lightbox-img" src="" style="max-width:90vw;max-height:90vh;border-radius:12px;"/>
+  </div>
+
+  <!-- ADMIN NAV -->
+  <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <a href="/admin" class="flex items-center gap-2 hover:opacity-90">
+          <span class="text-xl">🏛️</span>
+          <span class="font-bold text-sm">StreetSignal Admin</span>
+        </a>
+        <span class="text-slate-600">/</span>
+        <span class="text-xs font-semibold text-slate-300">{{ meta.icon }} {{ meta.label }}</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/admin" class="text-xs text-slate-400 hover:text-white px-2 py-1">
+          ← Back to Overview
+        </a>
+        <a href="/admin/logs" class="text-xs text-slate-400 hover:text-white px-2 py-1">
+          Logs
+        </a>
+        <a href="/logout" class="text-xs bg-red-950 text-red-200 hover:bg-red-900 border border-red-800 px-3 py-1.5 rounded-lg">
+          Logout 🚪
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- DEPARTMENT HERO HEADER -->
+  <div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div class="flex items-center gap-4">
+        <span class="text-5xl">{{ meta.icon }}</span>
+        <div>
+          <h2 class="text-3xl font-black text-slate-900">{{ meta.label }}</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            <strong>{{ open_count }}</strong> open complaints &nbsp;·&nbsp;
+            <span class="text-emerald-600 font-semibold">{{ resolved_count }}</span> resolved &nbsp;·&nbsp;
+            {% if overdue_count > 0 %}
+            <span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+              🚨 {{ overdue_count }} Pending > 72h
+            </span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Department switcher pills -->
+      <div class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1">
+        {% for s, cat in categories.items() %}
+        <a href="/admin/category/{{ s }}"
+           class="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all
+                  {% if s == slug %}bg-indigo-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+          {{ cat.icon }} {{ cat.label.split(' ')[0] }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LISTING -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Filters Bar -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Filter Priority:</span>
+        <a href="/admin/category/{{ slug }}?priority=all{% if show_resolved %}&show_resolved=true{% endif %}"
+           class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all {% if filter_prio=='all' %}bg-indigo-600 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+          All
+        </a>
+        {% for pcode, pmeta in priority_meta.items() %}
+        <a href="/admin/category/{{ slug }}?priority={{ pcode }}{% if show_resolved %}&show_resolved=true{% endif %}"
+           class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all {% if filter_prio==pcode %}bg-indigo-600 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+          {{ pmeta.icon }} {{ pmeta.label }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <div>
+        {% if show_resolved %}
+        <a href="/admin/category/{{ slug }}?priority={{ filter_prio }}"
+           class="text-xs font-semibold px-3.5 py-2 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200 transition-all">
+          ✅ Showing All · <span class="font-normal underline">Hide Resolved</span>
+        </a>
+        {% else %}
+        <a href="/admin/category/{{ slug }}?show_resolved=true&priority={{ filter_prio }}"
+           class="text-xs font-semibold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+          👁️ Show Resolved ({{ resolved_count }})
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- CARDS GRID -->
+    {% if groups %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for group in groups %}
+      {% set pm = group.priority_meta %}
+      <div class="issue-card bg-white rounded-2xl border-2 {% if group.resolved %}border-emerald-200 bg-emerald-50/20{% elif group.is_overdue %}border-red-500 ring-2 ring-red-100{% else %}border-slate-200{% endif %} p-5 flex flex-col justify-between shadow-sm">
+        
+        <div>
+          <!-- Status Banner if Overdue -->
+          {% if group.is_overdue and not group.resolved %}
+          <div class="mb-3 bg-red-600 text-white rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-between shadow-sm">
+            <span class="flex items-center gap-1.5">
+              <span class="animate-ping text-xs">⚠️</span>
+              <span>PENDING > 72 HOURS — MUST RESOLVE FIRST</span>
+            </span>
+            <span class="bg-red-800 px-2 py-0.5 rounded text-[10px]">{{ group.hours_pending }}h</span>
+          </div>
+          {% endif %}
+
+          <!-- Top row -->
+          <div class="flex justify-between items-start gap-2 mb-3">
+            <span class="{{ pm.badge }} border text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1">
+              {{ pm.icon }} {{ pm.label }}
+            </span>
+            
+            {% if group.resolved %}
+            <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
+              ✅ Resolved
+            </span>
+            {% else %}
+            <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+              {{ group.count }} Citizen Report{% if group.count != 1 %}s{% endif %}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Photo with click to enlarge -->
+          {% if group.photo_filename %}
+          <div class="mb-3 rounded-xl overflow-hidden cursor-pointer h-40 bg-slate-100 relative group/img"
+               onclick="openLightbox('/static/uploads/{{ group.photo_filename }}')">
+            <img src="/static/uploads/{{ group.photo_filename }}" alt="Issue evidence" 
+                 class="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"/>
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
+              🔍 Inspect Photo Evidence
+            </div>
+          </div>
+          {% endif %}
+
+          <h3 class="text-base font-bold {% if group.resolved %}text-slate-400 line-through{% else %}text-slate-900{% endif %} mb-1 leading-snug">
+            {{ group.main_text }}
+          </h3>
+          <p class="text-xs text-slate-400 mb-3">📅 Logged: {{ group.created_at }}</p>
+
+          <!-- Primary Citizen Details -->
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3 text-xs">
+            <p class="text-slate-500">
+              Primary Citizen: <strong class="text-slate-800">{{ group.primary_reporter }}</strong>
+            </p>
+            {% if group.primary_reporter_email != 'Anonymous' %}
+            <p class="text-slate-400 text-[11px] mt-0.5">Email: {{ group.primary_reporter_email }}</p>
+            {% endif %}
+          </div>
+
+          <!-- GPS Location -->
+          {% if group.location_address %}
+          <a href="https://www.openstreetmap.org/?mlat={{ group.location_lat }}&mlon={{ group.location_lng }}&zoom=17" 
+             target="_blank"
+             class="inline-flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full mb-3 hover:bg-indigo-100 transition-all max-w-full">
+            <span>📍</span>
+            <span class="truncate">{{ group.location_address[:55] }}…</span>
+          </a>
+          {% endif %}
+
+          <!-- Grouped citizen reports accordion -->
+          <div class="border-t border-slate-100 pt-3 mb-3 text-xs">
+            <p class="font-semibold text-slate-500 uppercase tracking-wider text-[11px] mb-2">
+              All Grouped Reports ({{ group.reports|length }}):
+            </p>
+            <div class="space-y-2 max-h-36 overflow-y-auto pr-1">
+              {% for r in group.reports %}
+              <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <p class="text-slate-800 font-medium leading-snug">"{{ r.text }}"</p>
+                {% if r.original_text %}
+                <p class="text-slate-400 italic text-[11px] mt-0.5">Original ({{ r.lang_name }}): "{{ r.original_text }}"</p>
+                {% endif %}
+                <p class="text-[10px] text-slate-400 mt-1">
+                  Reported by: {{ r.reporter }} · {{ r.created_at }}
+                </p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Municipal Resolution Action -->
+        <div class="pt-3 border-t border-slate-100 mt-2">
+          {% if group.resolved %}
+          <div class="space-y-2">
+            <p class="text-xs text-emerald-700 font-bold flex items-center gap-1">
+              <span>✅</span> Resolved on {{ group.resolved_at }}
+            </p>
+            <form action="/admin/reopen/{{ group.group_id }}" method="POST">
+              <button type="submit" 
+                class="btn-reopen w-full bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 font-semibold py-2 px-3 rounded-xl text-xs transition-all">
+                🔄 Reopen Issue Ticket
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <form action="/admin/resolve/{{ group.group_id }}" method="POST">
+            <button type="submit" 
+              class="btn-resolve w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
+              <span>✅</span> Mark as Municipal Resolved
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-3xl border border-slate-200 p-12 text-center">
+      <div class="text-5xl mb-3">{{ meta.icon }}</div>
+      <h4 class="text-lg font-bold text-slate-800 mb-1">No Complaints in this Queue</h4>
+      <p class="text-sm text-slate-400">
+        {% if filter_prio != 'all' %}
+          No {{ filter_prio }} priority complaints found. <a href="/admin/category/{{ slug }}" class="text-indigo-600 underline">View all</a>
+        {% else %}
+          All citizen reports for {{ meta.label }} have been resolved or none have been submitted yet.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-20 border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">
+    Municipal Admin Console · StreetSignal · SLA 72-Hour Enforced
+  </footer>
+
+  <script>
+    function openLightbox(src){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox').style.display='flex';}
+    function closeLightbox(){document.getElementById('lightbox-img').src='';document.getElementById('lightbox').style.display='none';}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+  </script>
+</body>
+</html>

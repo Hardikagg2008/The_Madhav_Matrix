@@ -1,68 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StreetSignal | Civic Dashboard</title>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>StreetSignal | Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
+    body{font-family:'Inter',sans-serif;}
+    .hero-bg{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 50%,#2563eb 100%);background-size:200% 200%;animation:gradShift 8s ease infinite;}
+    @keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    .cat-card{transition:transform .2s,box-shadow .2s,border-color .2s;}
+    .cat-card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,.1);}
+    .fade-in{opacity:0;transform:translateY(14px);animation:fadeUp .5s ease forwards;}
+    @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+    .stat-card{position:relative;overflow:hidden;}
+    .stat-card::after{content:'';position:absolute;top:-50%;left:-60%;width:40%;height:200%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.15),transparent);transform:skewX(-20deg);animation:shimmer 4s ease infinite;}
+    @keyframes shimmer{0%{left:-60%}100%{left:130%}}
   </style>
 </head>
-
 <body class="bg-slate-50 min-h-screen">
-  <nav class="bg-indigo-700 text-white shadow-lg p-4">
-    <div class="max-w-5xl mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2"><span>🚨</span> StreetSignal</h1>
-      <span class="text-indigo-100 text-sm font-medium bg-indigo-800 px-3 py-1 rounded-full">City Admin Portal</span>
+
+<!-- NAV -->
+<nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow">
+        <span class="text-white text-lg">🚨</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 leading-none">StreetSignal</h1>
+        <p class="text-xs text-slate-400">Powered by The Madhav Matrix</p>
+      </div>
     </div>
-  </nav>
-  <main class="max-w-5xl mx-auto p-6">
-    <section class="mb-12">
-      <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-        <h2 class="text-xl font-semibold text-slate-800 mb-2">Report an Issue</h2>
-        <form action="/submit" method="POST" class="flex gap-3">
-          <input type="text" name="complaint" placeholder="e.g. Large pothole on 5th Avenue"
-            class="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            required>
-          <button type="submit"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md">Submit
-            Report</button>
-        </form>
+    <!-- Category nav pills -->
+    <div class="hidden md:flex items-center gap-2 flex-wrap">
+      {% for slug, cat in categories.items() %}
+      <a href="/category/{{ slug }}"
+         class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 transition-all">
+        {{ cat.icon }} {{ cat.label }}
+      </a>
+      {% endfor %}
+    </div>
+    <span class="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-200">City Admin</span>
+  </div>
+</nav>
+
+<!-- ALERT BANNERS -->
+{% if duplicate_type == 'photo' %}
+<div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">📸</span>
+    <div class="flex-1"><p class="font-bold text-amber-800">Similar Photo Already Registered</p><p class="text-amber-700 text-sm mt-0.5">We found a visually identical photo in our system. Your report has not been added to avoid duplicates — officials are already aware.</p></div>
+    <button onclick="document.getElementById('ab').remove()" class="text-amber-400 hover:text-amber-700 text-xl">✕</button>
+  </div>
+</div>
+{% elif duplicate_type == 'text' %}
+<div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">🔁</span>
+    <div class="flex-1"><p class="font-bold text-amber-800">Complaint Already Registered</p><p class="text-amber-700 text-sm mt-0.5">A very similar complaint already exists. It has not been added again — track it in the dashboard below.</p></div>
+    <button onclick="document.getElementById('ab').remove()" class="text-amber-400 hover:text-amber-700 text-xl">✕</button>
+  </div>
+</div>
+{% elif error %}
+<div id="ab" class="bg-red-50 border-b-2 border-red-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">{% if error=='no_both' %}🚫{% elif error=='no_photo' %}📷{% else %}📍{% endif %}</span>
+    <div class="flex-1">
+      <p class="font-bold text-red-800">{% if error=='no_both' %}Photo and Location Required{% elif error=='no_photo' %}Photo Required{% else %}Location Required{% endif %}</p>
+      <p class="text-red-700 text-sm mt-0.5">Both a photo and your location are required before submitting a complaint.</p>
+    </div>
+    <button onclick="document.getElementById('ab').remove()" class="text-red-400 hover:text-red-700 text-xl">✕</button>
+  </div>
+</div>
+{% endif %}
+
+<!-- HERO -->
+<section class="hero-bg text-white py-14 px-6">
+  <div class="max-w-6xl mx-auto">
+    <p class="text-indigo-200 text-sm font-semibold uppercase tracking-widest mb-2">Civic Complaint Platform</p>
+    <h2 class="text-4xl sm:text-5xl font-extrabold mb-3">Your city. Your voice.</h2>
+    <p class="text-indigo-100 text-lg mb-8 max-w-xl">Pick a category below to report or track an issue. Our AI groups duplicates and routes them automatically.</p>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
+      <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+        <p class="text-3xl font-bold">{{ gs.open }}</p><p class="text-indigo-200 text-xs mt-1">Open Issues</p>
       </div>
-    </section>
-    <section>
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-slate-800">Active Signals</h2>
-        <span class="text-slate-500 text-sm">{{ groups|length }} Unique Issues</span>
+      <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+        <p class="text-3xl font-bold">{{ gs.total_reports }}</p><p class="text-indigo-200 text-xs mt-1">Total Reports</p>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {% for group in groups %}
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 transition-all">
-          <div class="flex justify-between items-start mb-4">
-            <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">{{
-              group.department }}</span>
-            <span class="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{{ group.count }}
-              Reports</span>
-          </div>
-          <h3 class="text-lg font-semibold text-slate-800 mb-3">{{ group.main_text }}</h3>
-          <div class="border-t border-slate-100 pt-4">
-            <p class="text-xs font-medium text-slate-400 uppercase mb-2">Matching reports</p>
-            <div class="space-y-2">
-              {% for report in group.reports %}
-              <p class="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">"{{ report }}"</p>
-              {% endfor %}
-            </div>
+      <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+        <p class="text-3xl font-bold text-green-300">{{ gs.resolved }}</p><p class="text-indigo-200 text-xs mt-1">Resolved</p>
+      </div>
+      <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+        <p class="text-3xl font-bold">{{ languages|length }}</p><p class="text-indigo-200 text-xs mt-1">Languages</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN -->
+<main class="max-w-6xl mx-auto px-6 py-10">
+
+  <!-- Quick Report Form (collapsed by default, expands on click) -->
+  <section class="mb-10 fade-in">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <button onclick="toggleForm()" class="w-full flex justify-between items-center px-8 py-5 text-left hover:bg-slate-50 transition-colors">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📝</span>
+          <div>
+            <p class="font-semibold text-slate-800">Report an Issue</p>
+            <p class="text-sm text-slate-500">Click to expand — or go to a specific category page</p>
           </div>
         </div>
-        {% endfor %}
+        <span id="formToggleIcon" class="text-slate-400 text-xl transition-transform">▼</span>
+      </button>
+      <div id="reportFormWrap" class="hidden border-t border-slate-100 px-8 pb-8 pt-6">
+        {% include 'partials/report_form.html' %}
       </div>
-    </section>
-  </main>
-</body>
+    </div>
+  </section>
 
+  <!-- Category Cards -->
+  <section>
+    <h2 class="text-2xl font-bold text-slate-900 mb-6">Browse by Department</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for slug, cat in cats.items() %}
+      {% set colors = {
+        'blue':    ('bg-blue-50',   'border-blue-200',  'text-blue-700',   'bg-blue-100',  'bg-blue-500'),
+        'yellow':  ('bg-yellow-50', 'border-yellow-200','text-yellow-700', 'bg-yellow-100','bg-yellow-500'),
+        'green':   ('bg-green-50',  'border-green-200', 'text-green-700',  'bg-green-100', 'bg-green-500'),
+        'emerald': ('bg-emerald-50','border-emerald-200','text-emerald-700','bg-emerald-100','bg-emerald-500'),
+        'pink':    ('bg-pink-50',   'border-pink-200',  'text-pink-700',   'bg-pink-100',  'bg-pink-500'),
+        'slate':   ('bg-slate-50',  'border-slate-200', 'text-slate-700',  'bg-slate-100', 'bg-slate-500'),
+      } %}
+      {% set c = colors.get(cat.color, colors.slate) %}
+      <a href="/category/{{ slug }}"
+         class="cat-card {{ c[0] }} {{ c[1] }} border-2 rounded-2xl p-6 block fade-in"
+         style="animation-delay:{{ loop.index0 * 0.07 }}s">
+        <div class="flex justify-between items-start mb-4">
+          <span class="text-4xl">{{ cat.icon }}</span>
+          {% if cat.critical > 0 %}
+          <span class="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200 animate-pulse">
+            🚨 {{ cat.critical }} Critical
+          </span>
+          {% elif cat.urgent > 0 %}
+          <span class="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full border border-orange-200">
+            ⚡ {{ cat.urgent }} Urgent
+          </span>
+          {% endif %}
+        </div>
+        <h3 class="text-lg font-bold {{ c[2] }} mb-1">{{ cat.label }}</h3>
+        <div class="flex items-center gap-3 mt-3 text-sm">
+          <span class="{{ c[3] }} {{ c[2] }} font-semibold px-2.5 py-1 rounded-full">{{ cat.open }} open</span>
+          <span class="text-slate-400">{{ cat.resolved }} resolved</span>
+          <span class="text-slate-400 text-xs ml-auto">{{ cat.reports }} reports →</span>
+        </div>
+        <!-- Mini progress bar -->
+        {% if cat.groups > 0 %}
+        <div class="mt-4 w-full bg-white/60 rounded-full h-1.5">
+          {% set pct = ((cat.resolved / cat.groups) * 100)|int %}
+          <div class="bg-emerald-400 h-1.5 rounded-full" style="width:{{ pct }}%" title="{{ pct }}% resolved"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">{{ pct }}% resolved</p>
+        {% else %}
+        <p class="text-xs text-slate-400 mt-4">No complaints yet — be the first!</p>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="mt-20 border-t border-slate-200 bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <span class="text-indigo-600 font-bold">StreetSignal</span>
+    <p class="text-slate-400 text-sm">AI · Multilingual · Voice · GPS · Photos · Priority tracking</p>
+  </div>
+</footer>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+  <img id="lightbox-img" src="" style="max-width:90vw;max-height:90vh;border-radius:12px;"/>
+</div>
+
+<script>
+function toggleForm() {
+  const wrap = document.getElementById('reportFormWrap');
+  const icon = document.getElementById('formToggleIcon');
+  wrap.classList.toggle('hidden');
+  icon.style.transform = wrap.classList.contains('hidden') ? '' : 'rotate(180deg)';
+}
+function openLightbox(src){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox').style.display='flex';}
+function closeLightbox(){document.getElementById('lightbox').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+</script>
+{% include 'partials/form_scripts.html' %}
+</body>
 </html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ meta.label }} | StreetSignal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    .issue-card{transition:transform .2s,box-shadow .2s,border-color .2s;}
+    .issue-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.1);}
+    .resolved-card:hover{border-color:#6ee7b7!important;}
+    .fade-in{opacity:0;transform:translateY(14px);animation:fadeUp .45s ease forwards;}
+    @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+    .pulse-badge{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.65}}
+    .btn-resolve{transition:all .2s;} .btn-resolve:hover{background:#059669;color:white;}
+    .btn-reopen{transition:all .2s;}  .btn-reopen:hover{background:#d97706;color:white;}
+    .upload-zone{border:2px dashed #cbd5e1;transition:border-color .2s,background .2s;cursor:pointer;}
+    .mic-rec{animation:micP 1s ease infinite;} @keyframes micP{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+  <img id="lightbox-img" src="" style="max-width:90vw;max-height:90vh;border-radius:12px;"/>
+</div>
+
+<!-- NAV -->
+<nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow">
+          <span class="text-white text-lg">🚨</span>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-slate-900 leading-none">StreetSignal</h1>
+          <p class="text-xs text-slate-400">Powered by The Madhav Matrix</p>
+        </div>
+      </a>
+      <span class="text-slate-300 hidden sm:inline">›</span>
+      <span class="hidden sm:inline text-sm font-semibold text-slate-700">{{ meta.icon }} {{ meta.label }}</span>
+    </div>
+    <!-- Category switcher -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-0.5">
+      {% for s, cat in categories.items() %}
+      <a href="/category/{{ s }}"
+         class="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-all
+                {% if s == slug %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700{% endif %}">
+        {{ cat.icon }} {{ cat.label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</nav>
+
+<!-- ALERT BANNERS -->
+{% if duplicate_type == 'photo' %}
+<div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">📸</span>
+    <div class="flex-1"><p class="font-bold text-amber-800">Similar Photo Already Registered</p><p class="text-amber-700 text-sm mt-0.5">A visually identical photo exists. Your report was not added — officials are already aware of this issue.</p></div>
+    <button onclick="document.getElementById('ab').remove()" class="text-amber-400 text-xl">✕</button>
+  </div>
+</div>
+{% elif duplicate_type == 'text' %}
+<div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">🔁</span>
+    <div class="flex-1"><p class="font-bold text-amber-800">Complaint Already Registered</p><p class="text-amber-700 text-sm mt-0.5">A very similar complaint already exists in this category. Track it in the list below.</p></div>
+    <button onclick="document.getElementById('ab').remove()" class="text-amber-400 text-xl">✕</button>
+  </div>
+</div>
+{% elif error %}
+<div id="ab" class="bg-red-50 border-b-2 border-red-400">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+    <span class="text-3xl">{% if error=='no_both' %}🚫{% elif error=='no_photo' %}📷{% else %}📍{% endif %}</span>
+    <div class="flex-1"><p class="font-bold text-red-800">{% if error=='no_both' %}Photo & Location Required{% elif error=='no_photo' %}Photo Required{% else %}Location Required{% endif %}</p><p class="text-red-700 text-sm mt-0.5">Both a photo and your location are required to submit.</p></div>
+    <button onclick="document.getElementById('ab').remove()" class="text-red-400 text-xl">✕</button>
+  </div>
+</div>
+{% endif %}
+
+<!-- CATEGORY HERO STRIP -->
+<div class="bg-white border-b border-slate-200">
+  <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row justify-between gap-6">
+    <div class="flex items-center gap-4">
+      <span class="text-5xl">{{ meta.icon }}</span>
+      <div>
+        <h2 class="text-3xl font-extrabold text-slate-900">{{ meta.label }}</h2>
+        <p class="text-slate-500 text-sm mt-1">
+          <span class="font-semibold text-slate-700">{{ open_count }}</span> open &nbsp;·&nbsp;
+          <span class="text-green-600 font-semibold">{{ resolved_count }}</span> resolved &nbsp;·&nbsp;
+          {{ open_count + resolved_count }} total issue groups
+        </p>
+      </div>
+    </div>
+    <!-- Priority breakdown pills -->
+    <div class="flex flex-wrap gap-2 items-center">
+      {% for pcode, pmeta in priority_meta.items() %}
+      {% set cnt = groups | selectattr('priority','equalto',pcode) | selectattr('resolved','equalto',false) | list | length %}
+      {% if cnt > 0 %}
+      <span class="{{ pmeta.badge }} border text-xs font-bold px-3 py-1.5 rounded-full {% if pcode=='critical' %}animate-pulse{% endif %}">
+        {{ pmeta.icon }} {{ cnt }} {{ pmeta.label }}
+      </span>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+  <!-- Report form (collapsible) -->
+  <section class="mb-8 fade-in">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <button onclick="toggleForm()" class="w-full flex justify-between items-center px-8 py-5 text-left hover:bg-slate-50 transition-colors">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📝</span>
+          <div>
+            <p class="font-semibold text-slate-800">Report a {{ meta.label }} Issue</p>
+            <p class="text-sm text-slate-500">Requires photo + location. AI auto-routes to this department.</p>
+          </div>
+        </div>
+        <span id="formToggleIcon" class="text-slate-400 text-xl transition-transform duration-300">▼</span>
+      </button>
+      <div id="reportFormWrap" class="hidden border-t border-slate-100 px-8 pb-8 pt-6">
+        {% set return_to = '/category/' + slug %}
+        {% include 'partials/report_form.html' %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Filters bar -->
+  <div class="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
+    <div class="flex flex-wrap gap-2">
+      <!-- Priority filter -->
+      <span class="text-xs font-semibold text-slate-500 self-center mr-1">Filter:</span>
+      <a href="/category/{{ slug }}?priority=all{% if show_resolved %}&show_resolved=true{% endif %}"
+         class="text-xs font-semibold px-3 py-1.5 rounded-full transition-all {% if filter_prio=='all' %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-indigo-100{% endif %}">
+        All
+      </a>
+      {% for pcode, pmeta in priority_meta.items() %}
+      <a href="/category/{{ slug }}?priority={{ pcode }}{% if show_resolved %}&show_resolved=true{% endif %}"
+         class="text-xs font-semibold px-3 py-1.5 rounded-full transition-all {% if filter_prio==pcode %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-indigo-100{% endif %}">
+        {{ pmeta.icon }} {{ pmeta.label }}
+      </a>
+      {% endfor %}
+    </div>
+    <!-- Resolved toggle -->
+    {% if show_resolved %}
+    <a href="/category/{{ slug }}?priority={{ filter_prio }}"
+       class="text-sm font-semibold px-4 py-2 rounded-xl bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-all self-start sm:self-auto">
+      ✅ Showing All · <span class="font-normal">hide resolved</span>
+    </a>
+    {% else %}
+    <a href="/category/{{ slug }}?show_resolved=true&priority={{ filter_prio }}"
+       class="text-sm font-semibold px-4 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all self-start sm:self-auto">
+      👁️ Show Resolved ({{ resolved_count }})
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Cards -->
+  {% if groups %}
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    {% for group in groups %}
+    {% set pm = group.priority_meta %}
+    <div class="issue-card {% if group.resolved %}resolved-card bg-emerald-50 border-emerald-200{% else %}bg-white border-slate-200{% endif %} rounded-2xl border overflow-hidden fade-in"
+         style="animation-delay:{{ loop.index * 0.05 }}s">
+
+      <!-- Cover photo -->
+      {% if group.photo_filename %}
+      <div class="relative h-44 overflow-hidden cursor-pointer group/img"
+           onclick="openLightbox('/static/uploads/{{ group.photo_filename }}')">
+        <img src="/static/uploads/{{ group.photo_filename }}" alt="Issue photo"
+             class="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"/>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-3">
+          <span class="text-white text-xs bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">🔍 Tap to enlarge</span>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="p-5">
+        <!-- Priority + count row -->
+        <div class="flex justify-between items-start mb-3">
+          <!-- Priority badge -->
+          <span class="{{ pm.badge }} border text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 {% if group.priority == 'critical' and not group.resolved %}pulse-badge{% endif %}">
+            {{ pm.icon }} {{ pm.label }}
+          </span>
+          <!-- Report count -->
+          <span class="{% if group.count >= 3 and not group.resolved %}bg-red-100 text-red-600 pulse-badge{% else %}bg-slate-100 text-slate-500{% endif %} text-xs font-bold px-2.5 py-1 rounded-full">
+            {{ group.count }} report{% if group.count != 1 %}s{% endif %}
+          </span>
+        </div>
+
+        <!-- Resolved ribbon -->
+        {% if group.resolved %}
+        <div class="flex items-center gap-1.5 mb-3 bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg w-fit">
+          ✅ Resolved{% if group.resolved_at %} · <span class="font-normal text-emerald-500">{{ group.resolved_at }}</span>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Priority bar -->
+        <div class="w-full bg-slate-100 rounded-full h-1 mb-3">
+          {% set bar_w = {'critical':100,'urgent':75,'normal':50,'low':25} %}
+          <div class="{{ pm.bar }} h-1 rounded-full" style="width:{{ bar_w.get(group.priority,50) }}%"></div>
+        </div>
+
+        <!-- Title -->
+        <h3 class="text-base font-semibold {% if group.resolved %}text-slate-400 line-through{% else %}text-slate-800{% endif %} mb-1 leading-snug">
+          {{ group.main_text }}
+        </h3>
+        <p class="text-xs text-slate-400 mb-3">📅 {{ group.created_at }}</p>
+
+        <!-- Location pill -->
+        {% if group.location_address %}
+        <a href="https://www.openstreetmap.org/?mlat={{ group.location_lat }}&mlon={{ group.location_lng }}&zoom=17"
+           target="_blank"
+           class="inline-flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full mb-3 hover:bg-indigo-100 transition-all max-w-full">
+          <span class="flex-shrink-0">📍</span>
+          <span class="truncate">{{ group.location_address[:65] }}{% if group.location_address|length > 65 %}…{% endif %}</span>
+        </a>
+        {% endif %}
+
+        <!-- Reports list -->
+        <div class="border-t {% if group.resolved %}border-emerald-100{% else %}border-slate-100{% endif %} pt-4 mb-4">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Reports ({{ group.count }})</p>
+          <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+            {% for r in group.reports %}
+            <div class="bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+              <p class="text-sm text-slate-700 leading-snug">"{{ r.text }}"</p>
+              {% if r.original_text %}<p class="text-xs text-slate-400 italic mt-0.5">"{{ r.original_text }}"</p>{% endif %}
+              <div class="flex flex-wrap gap-2 mt-1.5">
+                {% if r.lang_name %}<span class="bg-violet-100 text-violet-700 text-xs font-semibold px-2 py-0.5 rounded-full">🌐 {{ r.lang_name }}</span>{% endif %}
+                {% if r.photo %}<button type="button" onclick="openLightbox('/static/uploads/{{ r.photo }}')" class="text-xs text-indigo-400 hover:text-indigo-600 font-medium">📸 Photo</button>{% endif %}
+                {% if r.address %}<span class="text-xs text-slate-400" title="{{ r.address }}">📍 Located</span>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="border-t {% if group.resolved %}border-emerald-100{% else %}border-slate-100{% endif %} pt-3">
+          {% if group.resolved %}
+          <form action="/reopen/{{ group.group_id }}" method="POST">
+            <button type="submit" class="btn-reopen w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-amber-300 text-amber-700 bg-amber-50">🔄 Reopen Issue</button>
+          </form>
+          {% else %}
+          <form action="/resolve/{{ group.group_id }}" method="POST">
+            <button type="submit" class="btn-resolve w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-emerald-300 text-emerald-700 bg-emerald-50">✅ Mark as Resolved</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-24">
+    <div class="text-6xl mb-4">{{ meta.icon }}</div>
+    <h3 class="text-xl font-semibold text-slate-700 mb-2">
+      {% if filter_prio != 'all' %}No {{ filter_prio }} complaints{% elif not show_resolved and resolved_count > 0 %}All issues resolved! 🎉{% else %}No complaints yet{% endif %}
+    </h3>
+    <p class="text-slate-400 text-sm">
+      {% if not show_resolved and resolved_count > 0 %}
+        <a href="/category/{{ slug }}?show_resolved=true" class="text-indigo-500 underline">View {{ resolved_count }} resolved</a>
+      {% elif filter_prio != 'all' %}
+        <a href="/category/{{ slug }}" class="text-indigo-500 underline">Show all priorities</a>
+      {% else %}
+        Use the form above to report the first {{ meta.label }} issue!
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+</main>
+
+<!-- FOOTER -->
+<footer class="mt-16 border-t border-slate-200 bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center gap-4">
+    <a href="/" class="text-indigo-600 font-bold hover:underline">← Back to Dashboard</a>
+    <p class="text-slate-400 text-sm">StreetSignal · Built on The Madhav Matrix</p>
+  </div>
+</footer>
+
+<script>
+function toggleForm(){
+  const w=document.getElementById('reportFormWrap'),i=document.getElementById('formToggleIcon');
+  w.classList.toggle('hidden');i.style.transform=w.classList.contains('hidden')?'':'rotate(180deg)';
+}
+</script>
+{% include 'partials/form_scripts.html' %}
+</body>
+</html>
