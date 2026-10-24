@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+instance/
+streetsignal.db
+static/uploads/
+.DS_Store
