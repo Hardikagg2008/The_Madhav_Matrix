@@ -1,0 +1,94 @@
+<script>
+/* ── Language → translation banner ── */
+const langSelect=document.getElementById('langSelect'),transBanner=document.getElementById('translatePreview');
+if(langSelect)langSelect.addEventListener('change',()=>transBanner&&transBanner.classList.toggle('hidden',langSelect.value==='en'));
+
+/* ── Mic ── */
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recog=null,isListening=false;
+const micBtn=document.getElementById('micBtn'),micIcon=document.getElementById('micIcon'),micLabel=document.getElementById('micLabel');
+const micStatus=document.getElementById('micStatus'),micStatusText=document.getElementById('micStatusText'),micError=document.getElementById('micError');
+const ta=document.getElementById('complaintText');
+
+const L2BCP={'en':'en-US','hi':'hi-IN','ta':'ta-IN','te':'te-IN','bn':'bn-BD','mr':'mr-IN','gu':'gu-IN','pa':'pa-IN','ur':'ur-PK','es':'es-ES','fr':'fr-FR','ar':'ar-SA','de':'de-DE','zh-CN':'zh-CN','ja':'ja-JP','ru':'ru-RU','pt':'pt-BR','ko':'ko-KR'};
+
+if(!SpeechRec&&micBtn){micBtn.disabled=true;micBtn.classList.add('opacity-40','cursor-not-allowed');}
+else if(SpeechRec){
+  recog=new SpeechRec();recog.continuous=true;recog.interimResults=true;
+  let finalT='';
+  recog.onstart=()=>{isListening=true;finalT=ta.value;micBtn.classList.add('outline','outline-2','outline-red-400','bg-red-50','text-red-600');micIcon.textContent='⏹';micLabel.textContent='Stop';micStatus&&micStatus.classList.remove('hidden');};
+  recog.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?finalT+=t+' ':interim=t;}ta.value=finalT+interim;if(micStatusText)micStatusText.textContent=`Listening… "${interim||'(pause to confirm)'}"`;};
+  recog.onerror=e=>{stopMic();if(micError){micError.textContent=e.error==='not-allowed'?'⚠️ Mic permission denied.':'⚠️ Mic error: '+e.error;micError.classList.remove('hidden');}};
+  recog.onend=()=>{if(isListening)stopMic();};
+}
+function toggleMic(){if(!SpeechRec)return;micError&&micError.classList.add('hidden');isListening?stopMic():startMic();}
+function startMic(){recog.lang=L2BCP[langSelect?langSelect.value:'en']||'en-US';try{recog.start();}catch(e){}}
+function stopMic(){isListening=false;try{recog.stop();}catch(e){}if(micBtn){micBtn.classList.remove('outline','outline-2','outline-red-400','bg-red-50','text-red-600');micIcon.textContent='🎤';micLabel.textContent='Use Mic';}micStatus&&micStatus.classList.add('hidden');}
+
+/* ── Photo upload ── */
+const uploadZone=document.getElementById('uploadZone'),uploadPH=document.getElementById('uploadPlaceholder');
+const uploadPW=document.getElementById('uploadPreviewWrap'),uploadPI=document.getElementById('uploadPreview');
+const uploadFN=document.getElementById('uploadFilename'),photoInput=document.getElementById('photoInput');
+if(uploadZone){
+  uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('border-indigo-400','bg-indigo-50');});
+  uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('border-indigo-400','bg-indigo-50'));
+  uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('border-indigo-400','bg-indigo-50');const f=e.dataTransfer.files[0];if(f){photoInput.files=e.dataTransfer.files;showPreview(f);}});
+}
+function previewPhoto(e){const f=e.target.files[0];if(f)showPreview(f);}
+function showPreview(f){uploadPI.src=URL.createObjectURL(f);uploadFN.textContent='✓ '+f.name;uploadPH.classList.add('hidden');uploadPW.classList.remove('hidden');if(uploadZone){uploadZone.classList.add('border-emerald-400','bg-emerald-50');}updateSubmit();}
+function clearPhoto(e){e.stopPropagation();photoInput.value='';uploadPH.classList.remove('hidden');uploadPW.classList.add('hidden');if(uploadZone)uploadZone.classList.remove('border-emerald-400','bg-emerald-50','border-indigo-400','bg-indigo-50');updateSubmit();}
+
+/* ── Geolocation ── */
+const locStatus=document.getElementById('locationStatus'),locAddr=document.getElementById('locationAddress'),clearLocBtn=document.getElementById('clearLocBtn');
+function getLocation(){
+  if(!navigator.geolocation){if(locStatus)locStatus.innerHTML='<span class="text-red-500">⚠️ Not supported</span>';return;}
+  if(locStatus)locStatus.innerHTML='<span class="animate-pulse text-indigo-500">⏳ Getting location…</span>';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
+    document.getElementById('lat').value=lat;document.getElementById('lng').value=lng;
+    if(locStatus)locStatus.innerHTML='<span class="text-emerald-600 font-semibold">✅ Location captured!</span>';
+    if(locAddr){locAddr.classList.remove('hidden');locAddr.innerHTML=`<span class="text-xs text-slate-500">📍 ${lat}, ${lng}</span><br/><span class="text-xs text-indigo-500">Address resolved on submit</span>`;}
+    if(clearLocBtn)clearLocBtn.classList.remove('hidden');
+    updateSubmit();
+  },err=>{
+    const m={1:'Permission denied',2:'Unavailable',3:'Timed out'};
+    if(locStatus)locStatus.innerHTML=`<span class="text-red-500 text-xs">⚠️ ${m[err.code]||'Error'}</span>`;
+  },{enableHighAccuracy:true,timeout:10000});
+}
+function clearLocation(){
+  document.getElementById('lat').value='';document.getElementById('lng').value='';
+  if(locStatus)locStatus.innerHTML='<span class="text-2xl">🗺️</span><span class="ml-2">Not attached yet</span>';
+  if(locAddr)locAddr.classList.add('hidden');if(clearLocBtn)clearLocBtn.classList.add('hidden');
+  updateSubmit();
+}
+
+/* ── Submit lock ── */
+const submitBtn=document.getElementById('submitBtn');
+const chkPhoto=document.getElementById('checkPhoto'),chkPhotoIcon=document.getElementById('checkPhotoIcon');
+const chkLoc=document.getElementById('checkLocation'),chkLocIcon=document.getElementById('checkLocationIcon');
+function updateSubmit(){
+  const hp=photoInput&&photoInput.files&&photoInput.files.length>0;
+  const hl=document.getElementById('lat')&&document.getElementById('lat').value!=='';
+  if(chkPhotoIcon)chkPhotoIcon.textContent=hp?'✅':'⬜';
+  if(chkPhoto)chkPhoto.className='flex items-center gap-1.5 font-medium transition-colors '+(hp?'text-emerald-600':'text-slate-400');
+  if(chkLocIcon)chkLocIcon.textContent=hl?'✅':'⬜';
+  if(chkLoc)chkLoc.className='flex items-center gap-1.5 font-medium transition-colors '+(hl?'text-emerald-600':'text-slate-400');
+  if(!submitBtn)return;
+  if(hp&&hl){
+    submitBtn.disabled=false;
+    submitBtn.className='bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer font-semibold px-8 py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2';
+    submitBtn.innerHTML='🚀 Submit Report';
+  } else {
+    submitBtn.disabled=true;
+    submitBtn.className='bg-slate-300 text-slate-500 cursor-not-allowed font-semibold px-8 py-3.5 rounded-xl transition-all flex items-center gap-2';
+    const miss=!hp&&!hl?'Photo & Location':!hp?'Photo':'Location';
+    submitBtn.innerHTML=`🔒 Add ${miss} First`;
+  }
+}
+updateSubmit();
+
+/* ── Lightbox ── */
+function openLightbox(src){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox').style.display='flex';}
+function closeLightbox(){document.getElementById('lightbox').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+</script>
