@@ -1,154 +1,143 @@
-Here is a complete, professional, and tailored README.md based directly on your
-code in logic.py and app.py.
+# 🚨 The Madhav Matrix — StreetSignal
 
-The Madhav Matrix (StreetSignal) 🚦🏛️
+> **Hackathon Project** | AI-Powered Civic Complaint Intelligence Platform
 
-An intelligent civic issue tracking and deduplication web platform. Built with
-Flask, SQLAlchemy, and Scikit-Learn, this application automatically triages
-citizen complaints to the appropriate city department using keyword matching and
-clusters similar reports into unified tickets using TF-IDF Vectorization and
-Cosine Similarity.
+---
 
-📌 Features
+## 📌 Topic
 
-  - Automated Department Routing (logic.suggest_department)
-    Scans incoming complaints and matches them against department-specific
-    keywords:
+**Smart City Complaint Aggregation, Routing, and Citizen-to-Municipal Action Platform**
 
-      - 🚰 Water Department: leak, water, pipe, flood, burst, sewage, drain
-      - 🚗 Roads & Transport: pothole, hole, road, street, pavement, sidewalk,
-        traffic light, signal
-      - 🗑️ Sanitation: trash, garbage, waste, dump, litter, recycling, smell
-      - 🌳 Parks & Recreation: park, tree, grass, playground, bench, garden
-      - ⚡ Electricity/Power: power, electric, wire, outage, blackout,
-        transformer, spark
-      - 🏢 General Services: Fallback for general or unclassified reports
+Transforming how citizens report city problems — grouping duplicate complaints intelligently with TF-IDF, routing them to the right department automatically, enforcing a **72-Hour Municipal Resolution SLA**, and connecting citizens directly to municipal authorities.
 
-  - Smart Ticket Deduplication & Clustering (logic.group_complaints)
+---
 
-      - Employs TF-IDF vectorization to represent complaints in numerical space.
-      - Computes Cosine Similarity between the new report and all existing
-        issues in the database.
-      - If similarity reaches or exceeds the threshold (0.30), the issue is
-        linked to the existing ticket's group_id.
-      - Aggregates multiple reports into a single card with report counts
-        (count) and raw messages (reports).
+## 📖 Description
 
-  - Persistent Storage
-    Backed by SQLite via Flask-SQLAlchemy, tracking ticket IDs, complaint text,
-    timestamps, department tags, and cluster IDs.
+**StreetSignal** (built on *The Madhav Matrix*) is a complete dual-portal civic tech platform:
 
-🏗️ How It Works
+1. **Citizen Portal (`/citizen`)**:
+   - Citizens register and log in to report civic problems in their neighborhoods.
+   - Requires verified **Photo Evidence** and **GPS Geolocation**.
+   - Supports **18+ languages** (with automatic English translation) and **Voice Input (Mic)**.
+   - Citizens can track the live status of their submitted complaints (In Progress, Critical, or Resolved).
 
-[ Citizen Submits Issue via Form ]
-                │
-                ▼
-        POST /submit (app.py)
-                │
-        ┌───────┴────────────────────────┐
-        ▼                                ▼
-[ logic.suggest_department ]    [ logic.group_complaints ]
-  (Keyword Matching)              (TF-IDF + Cosine Similarity)
-        │                                │
-        ▼                                ▼
-Assigns Department Tag         Matches Existing Group ID
-        │                                │
-        └───────┬────────────────────────┘
-                ▼
-  [ Save to SQLite Database ]
-                │
-                ▼
-   GET / (Dashboard View)
-Aggregates reports by group_id -> Renders ticket cards with report counts
+2. **Municipal Authority Portal (`/admin`)**:
+   - Municipal staff access department-specific queues (Water, Roads, Sanitation, Parks, Electricity, General Services).
+   - Full audit logs of citizen reports, timestamps, photos, and exact map locations.
+   - Municipal officers mark tickets as **Resolved** (recording verified completion timestamps) or Reopen them.
 
-🛠️ Tech Stack & Requirements
+3. **🚨 72-Hour Auto-Escalation Engine**:
+   - Any complaint not resolved within **72 hours** is automatically escalated to **CRITICAL priority**.
+   - Flagged with `⚠️ OVERDUE (>72h) - RESOLVE FIRST` and moved to the top of the municipal action queue so authorities resolve it immediately.
 
-  - Language: Python 3.8+
-  - Web Framework: Flask
-  - ORM / Database: Flask-SQLAlchemy / SQLite
-  - Machine Learning / NLP: scikit-learn (TfidfVectorizer, cosine_similarity)
+No duplicate noise. No lost reports. No language barriers. Guaranteed civic accountability.
 
-🚀 Getting Started
+---
 
-1. Clone the Repository
+## ✨ Features
 
-git clone https://github.com/Hardikagg2008/The_Madhav_Matrix.git
-cd The_Madhav_Matrix
+| Feature | Description |
+|---|---|
+| 👥 Dual-Portal Access | Separate portals: Citizen (`/citizen`) for reporting and Municipal Admin (`/admin`) for resolution |
+| 🚨 72h SLA Auto-Escalation | Problems unsolved under 72h auto-escalate to Critical & sort to the top of the queue |
+| 🤖 AI Duplicate Grouping | TF-IDF vectorization + Cosine Similarity groups duplicate citizen reports |
+| 📸 Mandatory Photo Proof | Drag-and-drop or upload photo with perceptual hashing (`pHash`) to prevent duplicate spam |
+| 📍 Mandatory GPS Location | Captures coordinates and reverse-geocodes to street address via OpenStreetMap |
+| 🌐 18 Languages | Multi-language dropdown with real-time translation to English before AI processing |
+| 🎤 Voice Input (Mic) | Web Speech API allows citizens to speak their complaint in any language |
+| 🏛️ Auto Department Routing | Keyword NLP routes to Water, Roads, Sanitation, Parks, Electricity |
+| ✅ Municipal Resolution | Authorized officers mark issues resolved with live status sync back to the citizen |
+| 🔒 Submit Lockout | Submit button locked until both photo and location are provided |
 
-2. Set Up a Virtual Environment (Recommended)
+---
 
-# macOS/Linux
+## 🧠 How The AI Works
+
+```
+Citizen submits complaint (Text / Mic + Photo + GPS)
+        │
+        ▼
+  [Translate to English]   ← deep-translator (Google Translate API)
+        │
+        ▼
+  [Check Duplicate Photo]  ← perceptual hash (pHash) hamming distance
+        │
+        ▼
+  [Check Duplicate Text]   ← TF-IDF similarity ≥ 0.65 (alerts user if already registered)
+        │
+        ▼
+  [TF-IDF Grouping]        ← score ≥ 0.30 links report to existing municipal ticket
+        │
+        ▼
+  [Department Routing]     ← routes to Water, Roads, Sanitation, Parks, Electricity
+        │
+        ▼
+  Saved to Database (Linked to Citizen Profile)
+        │
+        ▼
+  [72-Hour SLA Monitor]    ← Unresolved after 72h? Auto-escalates to CRITICAL to resolve first!
+        │
+        ▼
+  Municipal Officer marks RESOLVED → Citizen sees live green resolution badge!
+```
+
+---
+
+## 🔑 Demo & Test Credentials
+
+| Role | Portal URL | Credentials |
+|---|---|---|
+| **Municipal Admin** | `http://127.0.0.1:5002/admin` | **Email**: `admin@streetsignal.com`<br/>**Password**: `admin123` |
+| **Citizen** | `http://127.0.0.1:5002/citizen` | Register any new account at `/register` |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Python, Flask, Flask-SQLAlchemy |
+| **Authentication** | Werkzeug Security (salted password hashing), Session-based RBAC |
+| **Database** | SQLite (`streetsignal.db`) |
+| **AI / NLP** | scikit-learn (TF-IDF Vectorizer, Cosine Similarity) |
+| **Image Verification** | Pillow, ImageHash (perceptual pHash) |
+| **Translation** | deep-translator (Google Translate) |
+| **Geocoding** | OpenStreetMap Nominatim API (free, no key required) |
+| **Voice Input** | Web Speech API (browser-native speech-to-text) |
+| **Frontend** | HTML5, Tailwind CSS, Vanilla JavaScript |
+
+---
+
+## 🚀 Getting Started
+
+### 1. Set up virtual environment & install dependencies
+```bash
 python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
+```
 
-# Windows
-python -m venv venv
-venv\Scripts\activate
+### 2. Run the application
+```bash
+python app.py
+```
 
-3. Install Dependencies
+### 3. Open in browser
+```
+http://127.0.0.1:5002
+```
 
-pip install Flask Flask-SQLAlchemy scikit-learn
+---
 
-💻 Running the Application
+## 🌐 Supported Languages
 
-1. Run the Web Application
+English · Hindi · Tamil · Telugu · Bengali · Marathi · Gujarati · Punjabi · Urdu · Spanish · French · Arabic · German · Chinese · Japanese · Russian · Portuguese · Korean
 
-python3 app.py
+---
 
-The server will start locally in debug mode on port 5001: 👉 Open your browser
-at: http://127.0.0.1:5001
+## 🏆 Built For
 
-2. Run the Logic Test Suite (CLI)
+**Hackathon** — Smart Cities, Civic Tech & AI Governance Track
 
-You can test the department suggestion and NLP grouping functions directly in
-the terminal:
-
-python3 logic.py
-
-📁 Project Structure
-
-The_Madhav_Matrix/
-│
-├── app.py                  # Flask web server, database models, and route controllers
-├── logic.py                # NLP logic (TF-IDF vectorizer, cosine similarity, department routing)
-├── instance/
-│   └── streetsignal.db     # SQLite database (auto-generated at runtime)
-├── templates/
-│   └── index.html          # Frontend template displaying grouped ticket cards
-├── requirements.txt        # Python package dependencies
-└── README.md               # Project documentation
-
-🗄️ Database Schema (Complaint)
-
-| Column       | Type          | Description                                                         |
-| :----------- | :------------ | :------------------------------------------------------------------ |
-| `id`         | `Integer`     | Primary key                                                         |
-| `text`       | `String(500)` | The complaint text submitted by the user                            |
-| `created_at` | `DateTime`    | UTC timestamp of when the report was created                        |
-| `group_id`   | `Integer`     | ID linking similar complaints into a single cluster                 |
-| `department` | `String(100)` | Assigned department (e.g., *Water Department*, *Roads & Transport*) |
-
-⚙️ Configuration & Tuning
-
-You can adjust the clustering sensitivity directly inside logic.py:
-
-# In logic.py -> group_complaints()
-THRESHOLD = 0.3  # Default balanced threshold
-
-# 0.5+ : Stricter matching (only groups near-identical phrasing)
-# 0.2- : Looser matching (groups loosely related reports)
-
-🤝 Contributing
-
-1.  Fork the Project
-2.  Create your Feature Branch (git checkout -b feature/NewFeature)
-3.  Commit your Changes (git commit -m 'Add some NewFeature')
-4.  Push to the Branch (git push origin feature/NewFeature)
-5.  Open a Pull Request
-
-👤 Author
-
-Hardik
-
-  - GitHub: @Hardikagg2008
-  - Repository: Hardikagg2008/The_Madhav_Matrix
+*The Madhav Matrix team — building technology that makes cities listen and act.*
