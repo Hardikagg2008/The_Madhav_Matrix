@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Citizen Portal | StreetSignal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .hero-bg {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+      background-size: 200% 200%;
+      animation: gradShift 8s ease infinite;
+    }
+    @keyframes gradShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .issue-card { transition: transform .2s, box-shadow .2s, border-color .2s; }
+    .issue-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,.08); }
+    .fade-in { opacity: 0; transform: translateY(12px); animation: fadeUp .45s ease forwards; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .pulse-badge { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+    .stat-card { position: relative; overflow: hidden; }
+    .stat-card::after {
+      content:''; position:absolute; top:-50%; left:-60%; width:40%; height:200%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,.15), transparent);
+      transform: skewX(-20deg); animation: shimmer 4s ease infinite;
+    }
+    @keyframes shimmer { 0%{left:-60%} 100%{left:130%} }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- LIGHTBOX -->
+  <div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+    <img id="lightbox-img" src="" style="max-width:90vw;max-height:90vh;border-radius:12px;"/>
+  </div>
+
+  <!-- CITIZEN NAV -->
+  <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg shadow">
+          🚨
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-slate-900 leading-none">StreetSignal</h1>
+          <p class="text-xs text-slate-400">Citizen Reporting Hub</p>
+        </div>
+        <span class="hidden sm:inline bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-200">
+          👤 Citizen Mode
+        </span>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+          <p class="text-xs font-bold text-slate-800 leading-tight">{{ user.name }}</p>
+          <p class="text-[11px] text-slate-400">{{ user.email }}</p>
+        </div>
+        <a href="/logout" 
+          class="text-xs font-semibold text-slate-600 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 px-3 py-1.5 rounded-xl transition-all">
+          Logout 🚪
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ALERTS & NOTIFICATIONS -->
+  {% if request.args.get('success') %}
+  <div id="alertSuccess" class="bg-emerald-50 border-b-2 border-emerald-400">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+      <span class="text-3xl">🎉</span>
+      <div class="flex-1">
+        <p class="font-bold text-emerald-800">Complaint Registered Successfully!</p>
+        <p class="text-emerald-700 text-sm mt-0.5">
+          Your report has been received, verified with your photo and GPS coordinates, and assigned to the responsible municipal department. Track its real-time progress below.
+        </p>
+      </div>
+      <button onclick="document.getElementById('alertSuccess').remove()" class="text-emerald-400 hover:text-emerald-700 text-xl">✕</button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if duplicate_type == 'photo' %}
+  <div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+      <span class="text-3xl">📸</span>
+      <div class="flex-1">
+        <p class="font-bold text-amber-800">Complaint Already Registered — Similar Photo Found</p>
+        <p class="text-amber-700 text-sm mt-0.5">
+          A matching photo for this problem was already submitted by another citizen. To avoid duplicates and save municipal resources, your report has been linked to the existing municipal ticket!
+        </p>
+      </div>
+      <button onclick="document.getElementById('ab').remove()" class="text-amber-400 text-xl">✕</button>
+    </div>
+  </div>
+  {% elif duplicate_type == 'text' %}
+  <div id="ab" class="bg-amber-50 border-b-2 border-amber-400">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+      <span class="text-3xl">🔁</span>
+      <div class="flex-1">
+        <p class="font-bold text-amber-800">Complaint Already Registered</p>
+        <p class="text-amber-700 text-sm mt-0.5">
+          A very similar complaint already exists in the system. Your report is linked to the active municipal ticket.
+        </p>
+      </div>
+      <button onclick="document.getElementById('ab').remove()" class="text-amber-400 text-xl">✕</button>
+    </div>
+  </div>
+  {% elif error %}
+  <div id="ab" class="bg-red-50 border-b-2 border-red-400">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-start gap-4">
+      <span class="text-3xl">{% if error=='no_both' %}🚫{% elif error=='no_photo' %}📷{% else %}📍{% endif %}</span>
+      <div class="flex-1">
+        <p class="font-bold text-red-800">
+          {% if error=='no_both' %}Photo & Location Required
+          {% elif error=='no_photo' %}Photo Required
+          {% else %}Location Required{% endif %}
+        </p>
+        <p class="text-red-700 text-sm mt-0.5">
+          Both a valid photo and GPS location are required so municipal workers can verify and fix the issue.
+        </p>
+      </div>
+      <button onclick="document.getElementById('ab').remove()" class="text-red-400 text-xl">✕</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- CITIZEN HERO -->
+  <section class="hero-bg text-white py-12 px-6">
+    <div class="max-w-6xl mx-auto">
+      <p class="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1.5">Citizen Dashboard</p>
+      <h2 class="text-3xl sm:text-4xl font-extrabold mb-2">Hello, {{ user.name }} 👋</h2>
+      <p class="text-indigo-100 text-sm sm:text-base max-w-xl mb-6">
+        File complaints in any language, speak with your mic, attach real photo & GPS proof, and watch municipal teams resolve your reports.
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
+        <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+          <p class="text-2xl font-bold">{{ total_filed }}</p>
+          <p class="text-indigo-200 text-xs mt-0.5">My Reports Filed</p>
+        </div>
+        <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+          <p class="text-2xl font-bold">{{ open_count }}</p>
+          <p class="text-indigo-200 text-xs mt-0.5">In Progress</p>
+        </div>
+        <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+          <p class="text-2xl font-bold text-amber-300">{{ overdue_count }}</p>
+          <p class="text-indigo-200 text-xs mt-0.5">>72h Auto-Escalated</p>
+        </div>
+        <div class="stat-card bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+          <p class="text-2xl font-bold text-emerald-300">{{ resolved_count }}</p>
+          <p class="text-indigo-200 text-xs mt-0.5">Resolved Issues</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN BODY -->
+  <main class="max-w-6xl mx-auto px-6 py-10 space-y-12">
+
+    <!-- 1. COMPLAINT FORM -->
+    <section class="fade-in">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-xl">
+            📝
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800">File a New Civic Complaint</h3>
+            <p class="text-xs sm:text-sm text-slate-500">
+              Type or speak in your language. Photo and location are required for municipal verification.
+            </p>
+          </div>
+        </div>
+
+        {% set form_action = '/citizen/submit' %}
+        {% set return_to = '/citizen' %}
+        {% include 'partials/report_form.html' %}
+      </div>
+    </section>
+
+    <!-- 2. MY COMPLAINTS LIST -->
+    <section class="fade-in">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900">My Registered Complaints & Status</h3>
+          <p class="text-slate-500 text-sm mt-0.5">
+            Real-time status updates directly from the municipal department.
+          </p>
+        </div>
+        <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          {{ groups|length }} Tracked Ticket{% if groups|length != 1 %}s{% endif %}
+        </span>
+      </div>
+
+      {% if groups %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for group in groups %}
+        {% set pm = group.priority_meta %}
+        <div class="issue-card bg-white {% if group.resolved %}border-emerald-300 bg-emerald-50/30{% elif group.is_overdue %}border-red-400 ring-1 ring-red-300{% else %}border-slate-200{% endif %} rounded-2xl border p-5 flex flex-col justify-between">
+          
+          <div>
+            <!-- Header status row -->
+            <div class="flex justify-between items-start gap-2 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700">
+                {{ group.department }}
+              </span>
+
+              {% if group.resolved %}
+              <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                🟢 Resolved
+              </span>
+              {% elif group.is_overdue %}
+              <span class="bg-red-100 text-red-700 border border-red-300 text-xs font-bold px-2.5 py-1 rounded-full pulse-badge flex items-center gap-1">
+                🚨 Overdue >72h (Critical)
+              </span>
+              {% else %}
+              <span class="{{ pm.badge }} border text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                {{ pm.icon }} In Progress
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Overdue SLA Banner if >72h -->
+            {% if group.is_overdue and not group.resolved %}
+            <div class="mb-3 bg-red-50 border border-red-200 rounded-xl p-2.5 text-xs text-red-700">
+              <p class="font-bold flex items-center gap-1">
+                <span>⚡</span> 72-Hour Resolution Guarantee Triggered
+              </p>
+              <p class="text-[11px] text-red-600 mt-0.5">
+                This issue has been pending for {{ group.hours_pending }} hours and was auto-escalated to CRITICAL for municipal resolution.
+              </p>
+            </div>
+            {% endif %}
+
+            <!-- Cover Photo if available -->
+            {% if group.photo_filename %}
+            <div class="mb-3 rounded-xl overflow-hidden cursor-pointer relative group/img h-40 bg-slate-100"
+                 onclick="openLightbox('/static/uploads/{{ group.photo_filename }}')">
+              <img src="/static/uploads/{{ group.photo_filename }}" alt="Complaint photo" 
+                   class="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"/>
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
+                🔍 Click to Enlarge
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Complaint text -->
+            <h4 class="text-base font-semibold {% if group.resolved %}text-slate-400 line-through{% else %}text-slate-800{% endif %} mb-1 leading-snug">
+              {{ group.main_text }}
+            </h4>
+            <p class="text-xs text-slate-400 mb-3">📅 Reported on {{ group.created_at }}</p>
+
+            <!-- GPS Address -->
+            {% if group.location_address %}
+            <a href="https://www.openstreetmap.org/?mlat={{ group.location_lat }}&mlon={{ group.location_lng }}&zoom=17" 
+               target="_blank"
+               class="inline-flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full mb-3 hover:bg-indigo-100 transition-all max-w-full">
+              <span>📍</span>
+              <span class="truncate">{{ group.location_address[:50] }}{% if group.location_address|length > 50 %}…{% endif %}</span>
+            </a>
+            {% endif %}
+          </div>
+
+          <!-- Bottom: Community confirmation & Resolution timestamp -->
+          <div class="pt-3 border-t border-slate-100 mt-3 text-xs text-slate-500">
+            {% if group.resolved %}
+            <p class="text-emerald-700 font-medium flex items-center gap-1">
+              <span>✅</span> Fixed by Municipal Department on {{ group.resolved_at }}
+            </p>
+            {% else %}
+            <p class="flex items-center justify-between text-slate-500">
+              <span>🔗 {{ group.count }} Citizen Report{% if group.count != 1 %}s{% endif %}</span>
+              <span class="text-indigo-600 font-medium">Under Municipal Review</span>
+            </p>
+            {% endif %}
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <!-- Empty state -->
+      <div class="bg-white rounded-3xl border border-slate-200 p-12 text-center">
+        <div class="text-5xl mb-3">🏙️</div>
+        <h4 class="text-lg font-bold text-slate-800 mb-1">No Complaints Filed Yet</h4>
+        <p class="text-sm text-slate-400 max-w-md mx-auto mb-4">
+          Notice a road pothole, leaking water pipe, trash buildup, or street light issue? Use the form above to file your first report!
+        </p>
+      </div>
+      {% endif %}
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-20 border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400">
+      <span class="text-indigo-600 font-bold text-sm">StreetSignal Citizen Portal</span>
+      <p>Built with The Madhav Matrix AI Engine · 72-Hour Municipal Escalation Guarantee</p>
+    </div>
+  </footer>
+
+  {% include 'partials/form_scripts.html' %}
+</body>
+</html>
