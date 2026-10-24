@@ -5,3 +5,5 @@ instance/
 streetsignal.db
 static/uploads/
 .DS_Store
+.env
+

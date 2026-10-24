@@ -9,13 +9,28 @@ from sqlalchemy import text, inspect as sa_inspect
 from PIL import Image
 import imagehash
 import os, uuid, requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 # Local logic module
 import logic
 
 app = Flask(__name__)
-app.secret_key = 'streetsignal-hackathon-secure-key-2026'
-app.config['SQLALCHEMY_DATABASE_URI']        = 'sqlite:///streetsignal.db'
+app.secret_key = os.environ.get('SECRET_KEY', 'streetsignal-hackathon-secure-key-2026')
+
+# ── Database Configuration: Online Cloud Database ─────────────────────────────
+DEFAULT_ONLINE_DB_URL = "postgresql+psycopg2://307c629c77ac425b6ef4c097b56a0a912fafe80452145438bbca6e1c7a9eb8a3:sk_zfEQO28FLnHrWD5xblR0i@db.prisma.io:5432/postgres?sslmode=require"
+
+db_uri = os.environ.get('DATABASE_URL', DEFAULT_ONLINE_DB_URL)
+if db_uri:
+    if db_uri.startswith('postgres://'):
+        db_uri = db_uri.replace('postgres://', 'postgresql+psycopg2://', 1)
+    elif db_uri.startswith('postgresql://'):
+        db_uri = db_uri.replace('postgresql://', 'postgresql+psycopg2://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI']        = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER']                  = os.path.join(app.root_path, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH']             = 10 * 1024 * 1024
@@ -70,6 +85,7 @@ LANGUAGES = [
 
 # ── Models ────────────────────────────────────────────────────────────────────
 class User(db.Model):
+    __tablename__ = 'users'
     id         = db.Column(db.Integer, primary_key=True)
     name       = db.Column(db.String(100), nullable=False)
     email      = db.Column(db.String(150), unique=True, nullable=False)
@@ -81,8 +97,9 @@ class User(db.Model):
 
 
 class Complaint(db.Model):
+    __tablename__ = 'complaints'
     id                   = db.Column(db.Integer, primary_key=True)
-    user_id              = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user_id              = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     user_name            = db.Column(db.String(100), nullable=True)
     user_email           = db.Column(db.String(150), nullable=True)
     text                 = db.Column(db.String(500), nullable=False)
@@ -103,51 +120,26 @@ class Complaint(db.Model):
     location_address     = db.Column(db.String(300), nullable=True)
 
 
-def migrate_db():
-    new_cols = {
-        'user_id':              'ALTER TABLE complaint ADD COLUMN user_id INTEGER',
-        'user_name':            'ALTER TABLE complaint ADD COLUMN user_name VARCHAR(100)',
-        'user_email':           'ALTER TABLE complaint ADD COLUMN user_email VARCHAR(150)',
-        'original_text':        'ALTER TABLE complaint ADD COLUMN original_text VARCHAR(500)',
-        'original_lang':        'ALTER TABLE complaint ADD COLUMN original_lang VARCHAR(20)',
-        'original_lang_name':   'ALTER TABLE complaint ADD COLUMN original_lang_name VARCHAR(50)',
-        'priority':             "ALTER TABLE complaint ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'normal'",
-        'is_overdue_escalated': 'ALTER TABLE complaint ADD COLUMN is_overdue_escalated BOOLEAN NOT NULL DEFAULT 0',
-        'resolved':             'ALTER TABLE complaint ADD COLUMN resolved BOOLEAN NOT NULL DEFAULT 0',
-        'resolved_at':          'ALTER TABLE complaint ADD COLUMN resolved_at DATETIME',
-        'photo_filename':       'ALTER TABLE complaint ADD COLUMN photo_filename VARCHAR(200)',
-        'photo_hash':           'ALTER TABLE complaint ADD COLUMN photo_hash VARCHAR(100)',
-        'location_lat':         'ALTER TABLE complaint ADD COLUMN location_lat FLOAT',
-        'location_lng':         'ALTER TABLE complaint ADD COLUMN location_lng FLOAT',
-        'location_address':     'ALTER TABLE complaint ADD COLUMN location_address VARCHAR(300)',
-    }
-    with db.engine.connect() as conn:
-        existing = [c['name'] for c in sa_inspect(db.engine).get_columns('complaint')]
-        for col, sql in new_cols.items():
-            if col not in existing:
-                try:
-                    conn.execute(text(sql))
-                    conn.commit()
-                except Exception as e:
-                    print(f"Migration note for {col}: {e}")
+def init_database():
+    with app.app_context():
+        db.create_all()
+        # Seed default municipal admin if doesn't exist
+        admin_user = User.query.filter_by(email='admin@streetsignal.com').first()
+        if not admin_user:
+            admin_user = User(
+                name='Municipal Authority',
+                email='admin@streetsignal.com',
+                phone='+1 800-CITY-GOV',
+                password=generate_password_hash('admin123'),
+                role='admin'
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Default admin created in cloud database: admin@streetsignal.com / admin123")
 
 
-with app.app_context():
-    db.create_all()
-    migrate_db()
-    # Seed default municipal admin if doesn't exist
-    admin_user = User.query.filter_by(email='admin@streetsignal.com').first()
-    if not admin_user:
-        admin_user = User(
-            name='Municipal Authority',
-            email='admin@streetsignal.com',
-            phone='+1 800-CITY-GOV',
-            password=generate_password_hash('admin123'),
-            role='admin'
-        )
-        db.session.add(admin_user)
-        db.session.commit()
-        print("Default admin created: admin@streetsignal.com / admin123")
+# Initialize cloud database
+init_database()
 
 
 # ── Auth Helpers ──────────────────────────────────────────────────────────────
