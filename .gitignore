@@ -6,4 +6,8 @@ streetsignal.db
 static/uploads/
 .DS_Store
 .env
+*.pptx
+StreetSignal_Presentation.pptx
+generate_presentation.py
+
 
