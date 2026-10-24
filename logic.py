@@ -1,6 +1,10 @@
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# -------------------------------------------------------------------------
+# CONFIGURATION: Department Keyword Mapping
+# -------------------------------------------------------------------------
 DEPARTMENT_MAP = {
     "Water Department": ["leak", "water", "pipe", "flood", "burst", "sewage", "drain"],
     "Roads & Transport": ["pothole", "hole", "road", "street", "pavement", "sidewalk", "traffic light", "signal"],
@@ -9,73 +13,85 @@ DEPARTMENT_MAP = {
     "Electricity/Power": ["power", "electric", "wire", "outage", "blackout", "transformer", "spark"],
 }
 
+def preprocess_text(text):
+    """
+    Cleans the input text: lowercase, removes punctuation and special characters.
+    """
+    if not text:
+        return ""
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text) # Removes punctuation (e.g., "Hole!!!" -> "hole")
+    return text.strip()
+
 def suggest_department(text):
     """
-    Analyzes the complaint text and suggests a city department 
-    based on keyword matching.
+    Analyzes the complaint text and suggests a city department.
     """
-    text = text.lower()
+    cleaned_text = preprocess_text(text)
     for department, keywords in DEPARTMENT_MAP.items():
-        if any(keyword in text for keyword in keywords):
+        if any(keyword in cleaned_text for keyword in keywords):
             return department
     
-    return "General Services"  # Fallback if no keywords match
+    return "General Services"
 
-def group_complaints(new_complaint, existing_complaints):
+def group_complaints(new_complaint_text, existing_complaints_list):
     """
-    Checks if a new complaint is similar to any existing complaints using TF-IDF.
-    
     Args:
-        new_complaint (str): The text of the new report.
-        existing_complaints (list): A list of strings of current open issues.
+        new_complaint_text (str): The text of the new report.
+        existing_complaints_list (list): A list of DICTIONARIES 
+                                         (e.g., [{'id': 1, 'text': '...'}, ...])
         
     Returns:
-        str or None: The text of the matching complaint if similarity > threshold, else None.
+        int or None: The ID of the matching complaint if similarity > threshold, else None.
     """
-    if not existing_complaints:
+    if not existing_complaints_list:
         return None
 
-    # Create a corpus: [New Complaint, Existing 1, Existing 2, ...]
-    corpus = [new_complaint] + existing_complaints
+    # 1. Preprocess the new complaint
+    new_text = preprocess_text(new_complaint_text)
     
-    # Convert text to TF-IDF vectors (turns words into numbers)
-    vectorizer = TfidfVectorizer().fit_transform(corpus)
+    # 2. Extract and preprocess all existing complaint texts
+    existing_texts = [preprocess_text(item['text']) for item in existing_complaints_list]
+    
+    # Create a corpus
+    corpus = [new_text] + existing_texts
+    
+    # 3. TF-IDF with stop_words='english' to ignore useless words (the, a, is, etc.)
+    vectorizer = TfidfVectorizer(stop_words='english').fit_transform(corpus)
     vectors = vectorizer.toarray()
     
-    # Calculate Cosine Similarity between the new one (index 0) and the rest
+    # Calculate Cosine Similarity
     similarities = cosine_similarity(vectors[0:1], vectors[1:])[0]
     
-    # Find the best match
     max_idx = similarities.argmax()
     max_score = similarities[max_idx]
     
-    # THRESHOLD: 0.3 is a good balance. 
-    # Higher (0.5) = stricter matching. Lower (0.2) = looser matching.
     THRESHOLD = 0.3 
     
     if max_score >= THRESHOLD:
-        return existing_complaints[max_idx]
+        # RETURN THE ID, not the text. This is what the backend needs.
+        return existing_complaints_list[max_idx]['id']
     
     return None
 
 # ==========================================
-# TEST BLOCK: This only runs if you run 'python3 logic.py' directly
+# TEST BLOCK: Updated for IDs
 # ==========================================
 if __name__ == "__main__":
     print("--- Testing Department Suggestion ---")
-    test_text = "There is a massive water leak on Main St"
-    print(f"Text: {test_text} -> Dept: {suggest_department(test_text)}") 
+    print(f"Result: {suggest_department('There is a massive WATER leak!!!')}") 
 
-    print("\n--- Testing Grouping ---")
-    existing = [
-        "Huge hole in the road on 5th Ave",
-        "Trash hasn't been picked up in two days",
-        "Street light is flickering on Oak St"
+    print("\n--- Testing Grouping with IDs ---")
+    # Mock data: This is exactly how the backend will send the data
+    existing_data = [
+        {"id": 101, "text": "Huge hole in the road on 5th Ave"},
+        {"id": 102, "text": "Trash hasn't been picked up in two days"},
+        {"id": 103, "text": "Street light is flickering on Oak St"}
     ]
     new_issue = "Pothole on 5th Avenue"
     
-    match = group_complaints(new_issue, existing)
-    if match:
-        print(f"MATCH FOUND: '{new_issue}' groups with '{match}'")
+    match_id = group_complaints(new_issue, existing_data)
+    if match_id:
+        print(f"MATCH FOUND: New issue groups with Ticket ID: {match_id}")
     else:
         print("NO MATCH: Creating a new ticket.")
