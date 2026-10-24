@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Citizen Registration | StreetSignal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
+
+  <div class="max-w-4xl w-full bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden grid grid-cols-1 md:grid-cols-2">
+
+    <!-- Left: Citizen Branding -->
+    <div class="bg-gradient-to-br from-indigo-700 via-indigo-600 to-purple-800 text-white p-8 sm:p-12 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center gap-3 mb-8">
+          <div class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-xl shadow">
+            🚨
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-none">StreetSignal</h1>
+            <p class="text-xs text-indigo-200 mt-0.5">Powered by The Madhav Matrix</p>
+          </div>
+        </div>
+
+        <h2 class="text-3xl font-extrabold leading-tight mb-4">
+          Join Your Civic Community
+        </h2>
+        <p class="text-indigo-100 text-sm leading-relaxed mb-6">
+          Register to file reports, track ongoing repairs in real-time, attach photo and GPS coordinates, and get notified when municipal workers fix your reported issues.
+        </p>
+
+        <div class="space-y-3 text-xs text-indigo-100">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Instant filing with AI auto-categorization</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Speak in your native language with voice input</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Guaranteed 72h municipal escalation SLA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-white/10 text-xs text-indigo-200 flex justify-between items-center">
+        <span>Citizen Registration</span>
+        <span>Free & Open to All 🏙️</span>
+      </div>
+    </div>
+
+    <!-- Right: Registration Form -->
+    <div class="p-8 sm:p-12 flex flex-col justify-between">
+      <div>
+        <div class="mb-6">
+          <h3 class="text-2xl font-bold text-slate-900">Create Citizen Account</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Register your profile to submit and monitor your civic complaints.
+          </p>
+        </div>
+
+        {% if error %}
+        <div class="mb-5 bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/register" method="POST" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Full Name *</label>
+            <input type="text" name="name" required
+              placeholder="e.g. John Doe"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Address *</label>
+            <input type="email" name="email" required
+              placeholder="e.g. john@example.com"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Phone Number <span class="text-slate-400 font-normal lowercase">(optional)</span></label>
+            <input type="tel" name="phone"
+              placeholder="e.g. +1 555-0199"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password *</label>
+              <input type="password" name="password" required minlength="4"
+                placeholder="••••••••"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Confirm Password *</label>
+              <input type="password" name="confirm_password" required minlength="4"
+                placeholder="••••••••"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-md hover:shadow-lg mt-3 text-sm flex items-center justify-center gap-2">
+            <span>Register & Go to Citizen Portal</span>
+            <span>→</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-500">
+          Already registered?
+          <a href="/login" class="text-indigo-600 font-semibold hover:underline ml-1">Sign In to Account</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

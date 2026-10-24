@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | StreetSignal Civic Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
+
+  <div class="max-w-4xl w-full bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden grid grid-cols-1 md:grid-cols-2">
+
+    <!-- Left: Branding Hero -->
+    <div class="bg-gradient-to-br from-indigo-700 via-indigo-600 to-purple-800 text-white p-8 sm:p-12 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center gap-3 mb-8">
+          <div class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-xl shadow">
+            🚨
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-none">StreetSignal</h1>
+            <p class="text-xs text-indigo-200 mt-0.5">Powered by The Madhav Matrix</p>
+          </div>
+        </div>
+
+        <h2 class="text-3xl font-extrabold leading-tight mb-4">
+          Smart Civic Issue Resolution & Municipal Action
+        </h2>
+        <p class="text-indigo-100 text-sm leading-relaxed mb-6">
+          Connect citizens directly with local departments. AI auto-groups similar reports, translates 18+ languages, and strictly enforces a <strong>72-Hour Resolution SLA</strong>.
+        </p>
+
+        <div class="space-y-3 text-xs text-indigo-100">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Citizens file issues with mandatory GPS & photo evidence</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Municipal authority portal tracks and marks complaints resolved</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</span>
+            <span>Unsolved issues >72h automatically escalated to Critical</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-white/10 text-xs text-indigo-200 flex justify-between items-center">
+        <span>Citizen & Municipal Portal</span>
+        <span>Secure Access 🔒</span>
+      </div>
+    </div>
+
+    <!-- Right: Login Form -->
+    <div class="p-8 sm:p-12 flex flex-col justify-between">
+      <div>
+        <div class="mb-6">
+          <h3 class="text-2xl font-bold text-slate-900">Sign in to your account</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Access your personalized portal based on your assigned role.
+          </p>
+        </div>
+
+        {% if error %}
+        <div class="mb-5 bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Quick 1-Click Demo Fill Pill -->
+        <div class="mb-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+          <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <span>🔑</span> Test Account Quick Login:
+          </p>
+          <div class="flex gap-2">
+            <button type="button" onclick="fillAdmin()" 
+              class="flex-1 bg-white hover:bg-indigo-50 border border-slate-300 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 text-xs font-semibold py-2 px-3 rounded-xl transition-all shadow-sm">
+              🏛️ Municipal Admin
+            </button>
+            <a href="/register" 
+              class="flex-1 bg-white hover:bg-emerald-50 border border-slate-300 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 text-xs font-semibold py-2 px-3 rounded-xl transition-all shadow-sm text-center">
+              👤 New Citizen Register
+            </a>
+          </div>
+        </div>
+
+        <form action="/login" method="POST" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Email Address</label>
+            <input type="email" name="email" id="emailInput" required
+              placeholder="e.g. citizen@example.com"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"/>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Password</label>
+            </div>
+            <input type="password" name="password" id="passwordInput" required
+              placeholder="••••••••"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"/>
+          </div>
+
+          <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg mt-2 text-sm flex items-center justify-center gap-2">
+            <span>Sign In</span>
+            <span>→</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-500">
+          Want to report an issue in your city?
+          <a href="/register" class="text-indigo-600 font-semibold hover:underline ml-1">Create Citizen Account</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function fillAdmin() {
+      document.getElementById('emailInput').value = 'admin@streetsignal.com';
+      document.getElementById('passwordInput').value = 'admin123';
+    }
+  </script>
+</body>
+</html>
