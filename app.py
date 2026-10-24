@@ -23,8 +23,27 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    complaints = Complaint.query.order_by(Complaint.created_at.desc()).all()
-    return render_template('index.html', complaints=complaints)
+    # 1. Get all complaints from the database
+    all_complaints = Complaint.query.order_by(Complaint.created_at.desc()).all()
+    
+    # 2. Group them by group_id using a dictionary
+    # This is the "magic" that allows the Stylist's cards to work
+    grouped_data = {}
+    for c in all_complaints:
+        gid = c.group_id
+        if gid not in grouped_data:
+            grouped_data[gid] = {
+                'main_text': c.text, 
+                'department': c.department, 
+                'count': 0, 
+                'reports': []
+            }
+        grouped_data[gid]['count'] += 1
+        grouped_data[gid]['reports'].append(c.text)
+
+    # 3. Convert the dictionary to a list so the HTML can loop through it
+    groups = list(grouped_data.values())
+    return render_template('index.html', groups=groups) # <--- This must be 'groups'
 
 @app.route('/submit', methods=['POST'])
 def submit():

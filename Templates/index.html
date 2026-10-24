@@ -1,31 +1,68 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>StreetSignal</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #f4f7f6; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { width: 70%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        ul { list-style: none; padding: 0; }
-        li { background: white; margin: 10px 0; padding: 10px; border-left: 5px solid #007bff; border-radius: 3px; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>🚨 StreetSignal</h1>
-        <p>Report a civic issue in your neighborhood.</p>
-        <form action="/submit" method="POST">
-            <input type="text" name="complaint" placeholder="e.g. Pothole on 5th Ave" required>
-            <button type="submit">Send</button>
-        </form>
-    </div>
+<html lang="en">
 
-    <h3>Live Feed</h3>
-    <ul>
-        {% for c in complaints %}
-            <li>{{ c.text }}</li>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreetSignal | Civic Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen">
+  <nav class="bg-indigo-700 text-white shadow-lg p-4">
+    <div class="max-w-5xl mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2"><span>🚨</span> StreetSignal</h1>
+      <span class="text-indigo-100 text-sm font-medium bg-indigo-800 px-3 py-1 rounded-full">City Admin Portal</span>
+    </div>
+  </nav>
+  <main class="max-w-5xl mx-auto p-6">
+    <section class="mb-12">
+      <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Report an Issue</h2>
+        <form action="/submit" method="POST" class="flex gap-3">
+          <input type="text" name="complaint" placeholder="e.g. Large pothole on 5th Avenue"
+            class="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            required>
+          <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md">Submit
+            Report</button>
+        </form>
+      </div>
+    </section>
+    <section>
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-slate-800">Active Signals</h2>
+        <span class="text-slate-500 text-sm">{{ groups|length }} Unique Issues</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for group in groups %}
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 transition-all">
+          <div class="flex justify-between items-start mb-4">
+            <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">{{
+              group.department }}</span>
+            <span class="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{{ group.count }}
+              Reports</span>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-800 mb-3">{{ group.main_text }}</h3>
+          <div class="border-t border-slate-100 pt-4">
+            <p class="text-xs font-medium text-slate-400 uppercase mb-2">Matching reports</p>
+            <div class="space-y-2">
+              {% for report in group.reports %}
+              <p class="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">"{{ report }}"</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
         {% endfor %}
-    </ul>
+      </div>
+    </section>
+  </main>
 </body>
+
 </html>
